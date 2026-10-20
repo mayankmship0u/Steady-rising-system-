@@ -123,6 +123,27 @@ async function generatePngs() {
 
   await sharp(svgBuffer).resize(48, 48).png().toFile(path.join(publicDir, 'favicon.ico'));
   console.log('Generated favicon.ico');
+
+  // If android res directory exists, populate Android launcher mipmaps
+  const androidResDir = path.resolve('android/app/src/main/res');
+  if (fs.existsSync(androidResDir)) {
+    const mipmaps = [
+      { dir: 'mipmap-mdpi', size: 48 },
+      { dir: 'mipmap-hdpi', size: 72 },
+      { dir: 'mipmap-xhdpi', size: 96 },
+      { dir: 'mipmap-xxhdpi', size: 144 },
+      { dir: 'mipmap-xxxhdpi', size: 192 },
+    ];
+
+    for (const m of mipmaps) {
+      const targetFolder = path.join(androidResDir, m.dir);
+      if (fs.existsSync(targetFolder)) {
+        await sharp(svgBuffer).resize(m.size, m.size).png().toFile(path.join(targetFolder, 'ic_launcher.png'));
+        await sharp(svgBuffer).resize(m.size, m.size).png().toFile(path.join(targetFolder, 'ic_launcher_round.png'));
+        console.log(`Updated Android ${m.dir} icons (${m.size}x${m.size})`);
+      }
+    }
+  }
 }
 
 generatePngs().catch(console.error);

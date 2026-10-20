@@ -659,18 +659,24 @@ export const VaultScreen: React.FC<VaultScreenProps> = ({
             </div>
           </div>
 
-          {/* Android PWA Installation Center */}
-          <div className="rounded-xl border border-cyan-500/30 bg-cyan-950/20 p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Smartphone className="w-4 h-4 text-cyan-400" />
-              <h4 className="font-orbitron text-xs font-bold text-cyan-300 uppercase">
-                Android Installation Status
-              </h4>
+          {/* Android PWA & Native APK Center */}
+          <div className="rounded-xl border border-cyan-500/30 bg-cyan-950/20 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Smartphone className="w-4 h-4 text-cyan-400" />
+                <h4 className="font-orbitron text-xs font-bold text-cyan-300 uppercase">
+                  Android Installation &amp; APK
+                </h4>
+              </div>
+              <span className="text-[10px] font-orbitron font-semibold text-cyan-400 px-2 py-0.5 rounded border border-cyan-500/30 bg-cyan-950/60">
+                Capacitor Ready
+              </span>
             </div>
-            <p className="text-xs text-slate-300 leading-relaxed font-rajdhani mb-3">
+
+            <p className="text-xs text-slate-300 leading-relaxed font-rajdhani">
               {isInstalled
                 ? '✅ STEADY is currently running in Standalone PWA mode on your device.'
-                : 'Install STEADY onto your Android home screen via Chrome to run offline with zero horizontal scrolling and full-screen hunter display.'}
+                : 'Install STEADY onto your Android home screen via Chrome, or download the compiled native Android APK.'}
             </p>
 
             {!isInstalled && isInstallable && (
@@ -678,9 +684,28 @@ export const VaultScreen: React.FC<VaultScreenProps> = ({
                 onClick={() => install()}
                 className="w-full py-2.5 rounded-xl bg-cyan-400 text-black text-xs font-orbitron font-bold uppercase tracking-wider hover:bg-cyan-300 transition"
               >
-                INSTALL APP NOW
+                INSTALL PWA APP NOW
               </button>
             )}
+
+            {/* Standalone APK GitHub Actions Info */}
+            <div className="pt-2 border-t border-slate-800/80 text-xs space-y-1.5 font-rajdhani">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400">Application ID:</span>
+                <span className="font-mono text-[11px] text-cyan-300">com.steady.shadowlevel</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400">Application Name:</span>
+                <span className="text-[11px] text-slate-200">STEADY Shadow Level System</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400">Automated APK Builder:</span>
+                <span className="font-mono text-[11px] text-purple-300">.github/workflows/build-apk.yml</span>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Push to GitHub → go to <strong>Actions</strong> tab on mobile → run <strong>Build Android Debug APK</strong> → download <code>app-debug.apk</code>.
+              </p>
+            </div>
           </div>
 
           {/* Data Export Center */}
