@@ -1,0 +1,6 @@
+{
+  "name": "STEADY — Shadow Level System",
+  "description": "Dark fantasy hunter-rank personal progression and productivity system inspired by hunter leveling systems. Features quest management, XP & rank progression, One-Go Push-Ups tracker, timetable, study timer, and offline PWA capability.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
