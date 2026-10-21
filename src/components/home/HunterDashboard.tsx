@@ -6,6 +6,8 @@ import {
   StudySession,
   TimetableActivity,
   ActiveTab,
+  TestRecord,
+  DailyTestSlot,
 } from '../../types';
 import { RankEmblem } from '../common/RankEmblem';
 import {
@@ -26,6 +28,10 @@ import {
   ChevronRight,
   Briefcase,
   Zap,
+  GraduationCap,
+  Target,
+  Check,
+  AlertCircle,
 } from 'lucide-react';
 
 interface HunterDashboardProps {
@@ -34,6 +40,8 @@ interface HunterDashboardProps {
   pushUpRecords: PushUpRecord[];
   studySessions: StudySession[];
   timetable: TimetableActivity[];
+  testRecords?: TestRecord[];
+  dailySlot?: DailyTestSlot;
   onNavigate: (tab: ActiveTab) => void;
   onOpenAddQuest: () => void;
   onToggleQuest: (questId: string) => void;
@@ -46,6 +54,8 @@ export const HunterDashboard: React.FC<HunterDashboardProps> = ({
   pushUpRecords,
   studySessions,
   timetable,
+  testRecords = [],
+  dailySlot,
   onNavigate,
   onOpenAddQuest,
   onToggleQuest,
@@ -215,13 +225,21 @@ export const HunterDashboard: React.FC<HunterDashboardProps> = ({
       </div>
 
       {/* 3. QUICK SYSTEM ACTIONS */}
-      <div className="grid grid-cols-2 gap-2.5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
         <button
           onClick={onOpenAddQuest}
           className="flex items-center justify-center gap-2 rounded-xl border border-cyan-500/40 bg-cyan-950/40 p-3 text-xs font-bold font-orbitron text-cyan-300 transition-all hover:bg-cyan-900/50 active:scale-95 shadow-sm"
         >
           <PlusCircle className="w-4 h-4 text-cyan-400" />
           <span>ADD QUEST</span>
+        </button>
+
+        <button
+          onClick={() => onNavigate('tests')}
+          className="flex items-center justify-center gap-2 rounded-xl border border-sky-500/40 bg-sky-950/40 p-3 text-xs font-bold font-orbitron text-sky-300 transition-all hover:bg-sky-900/50 active:scale-95 shadow-sm"
+        >
+          <GraduationCap className="w-4 h-4 text-sky-400" />
+          <span>TEST TRAINING</span>
         </button>
 
         <button
@@ -242,25 +260,75 @@ export const HunterDashboard: React.FC<HunterDashboardProps> = ({
 
         <button
           onClick={onOpenTimetable}
-          className="flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900/60 p-3 text-xs font-bold font-orbitron text-slate-300 transition-all hover:bg-slate-800 active:scale-95 shadow-sm"
+          className="col-span-2 sm:col-span-1 flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900/60 p-3 text-xs font-bold font-orbitron text-slate-300 transition-all hover:bg-slate-800 active:scale-95 shadow-sm"
         >
-          <Briefcase className="w-4 h-4 text-sky-400" />
+          <Briefcase className="w-4 h-4 text-slate-400" />
           <span>OFFICE SCHEDULE</span>
         </button>
       </div>
 
+      {/* 3.5. DEDICATED DAILY TEST SLOT CARD */}
+      {dailySlot && (
+        <div
+          onClick={() => onNavigate('tests')}
+          className="cursor-pointer rounded-xl border border-sky-500/30 bg-gradient-to-r from-sky-950/30 via-slate-900/60 to-indigo-950/30 p-3.5 transition-all hover:border-sky-500/60 shadow-sm group"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2.5">
+              <div
+                className={`p-2 rounded-lg border mt-0.5 ${
+                  dailySlot.completedDates.includes(todayStr)
+                    ? 'border-emerald-500/40 bg-emerald-950/50 text-emerald-300'
+                    : 'border-sky-500/40 bg-sky-950/50 text-sky-300'
+                }`}
+              >
+                <Target className="w-4 h-4" />
+              </div>
+
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-orbitron text-xs font-bold text-white uppercase tracking-wider">
+                    Today&apos;s Daily Test Slot
+                  </span>
+                  <span
+                    className={`text-[9px] font-orbitron font-bold px-1.5 py-0.5 rounded uppercase border ${
+                      dailySlot.completedDates.includes(todayStr)
+                        ? 'border-emerald-500/40 bg-emerald-950/60 text-emerald-300'
+                        : 'border-amber-500/40 bg-amber-950/60 text-amber-300'
+                    }`}
+                  >
+                    {dailySlot.completedDates.includes(todayStr) ? 'CLEARED' : 'PENDING'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 font-medium mt-0.5">
+                  {dailySlot.subject} · {dailySlot.category}
+                </p>
+                <p className="text-[10px] text-slate-400 font-rajdhani">
+                  Scheduled: {dailySlot.timeFormatted || '8:00 PM'} (After 10 AM–7 PM office duty)
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1 text-xs text-sky-400 font-rajdhani font-semibold group-hover:translate-x-0.5 transition-transform shrink-0">
+              <span>{dailySlot.completedDates.includes(todayStr) ? 'View Marks' : 'Take Test'}</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 4. TODAY'S PROGRESS STATS CARDS */}
-      <div className="grid grid-cols-3 gap-2 text-center">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
         {/* Quest Completion Rate */}
         <div
           onClick={() => onNavigate('quests')}
-          className="cursor-pointer rounded-xl border border-slate-800 bg-[#0c101a] p-3 transition hover:border-cyan-500/40"
+          className="cursor-pointer rounded-xl border border-slate-800 bg-[#0c101a] p-2.5 transition hover:border-cyan-500/40"
         >
           <span className="text-[10px] text-slate-400 font-rajdhani uppercase tracking-wider block">
             Quests Today
           </span>
           <div className="mt-1 flex items-baseline justify-center gap-1">
-            <span className="font-orbitron text-lg font-bold text-cyan-300">
+            <span className="font-orbitron text-base font-bold text-cyan-300">
               {completedTodayQuests.length}
             </span>
             <span className="text-xs text-slate-500">/ {todayQuests.length}</span>
@@ -270,31 +338,51 @@ export const HunterDashboard: React.FC<HunterDashboardProps> = ({
           </span>
         </div>
 
+        {/* Test Performance */}
+        <div
+          onClick={() => onNavigate('tests')}
+          className="cursor-pointer rounded-xl border border-slate-800 bg-[#0c101a] p-2.5 transition hover:border-sky-500/40"
+        >
+          <span className="text-[10px] text-slate-400 font-rajdhani uppercase tracking-wider block">
+            Test Avg
+          </span>
+          <div className="mt-1 font-orbitron text-base font-bold text-sky-300">
+            {testRecords.length > 0
+              ? `${(
+                  testRecords.reduce((acc, t) => acc + t.percentage, 0) / testRecords.length
+                ).toFixed(1)}%`
+              : '—'}
+          </div>
+          <span className="mt-0.5 block text-[10px] text-sky-400 font-rajdhani font-semibold">
+            {testRecords.length} Taken
+          </span>
+        </div>
+
         {/* One-Go Push-Ups Best */}
         <div
           onClick={() => onNavigate('training')}
-          className="cursor-pointer rounded-xl border border-slate-800 bg-[#0c101a] p-3 transition hover:border-amber-500/40"
+          className="cursor-pointer rounded-xl border border-slate-800 bg-[#0c101a] p-2.5 transition hover:border-amber-500/40"
         >
           <span className="text-[10px] text-slate-400 font-rajdhani uppercase tracking-wider block">
             Push-Ups Best
           </span>
-          <div className="mt-1 font-orbitron text-lg font-bold text-amber-300">
+          <div className="mt-1 font-orbitron text-base font-bold text-amber-300">
             {bestPushUpToday > 0 ? `${bestPushUpToday}` : '—'}
           </div>
           <span className="mt-0.5 block text-[10px] text-slate-500 font-rajdhani">
-            All-Time: {allTimeBestPushUp}
+            Best: {allTimeBestPushUp}
           </span>
         </div>
 
         {/* Study Focus Minutes */}
         <div
           onClick={() => onNavigate('study')}
-          className="cursor-pointer rounded-xl border border-slate-800 bg-[#0c101a] p-3 transition hover:border-purple-500/40"
+          className="cursor-pointer rounded-xl border border-slate-800 bg-[#0c101a] p-2.5 transition hover:border-purple-500/40"
         >
           <span className="text-[10px] text-slate-400 font-rajdhani uppercase tracking-wider block">
             Focus Time
           </span>
-          <div className="mt-1 font-orbitron text-lg font-bold text-purple-300">
+          <div className="mt-1 font-orbitron text-base font-bold text-purple-300">
             {todayStudyMinutes}m
           </div>
           <span className="mt-0.5 block text-[10px] text-purple-400 font-rajdhani font-semibold">

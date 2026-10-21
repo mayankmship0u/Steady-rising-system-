@@ -13,12 +13,15 @@ import {
   XPTransaction,
   AppSettings,
   HunterRank,
+  TestRecord,
+  DailyTestSlot,
 } from './types';
 import { StorageService, getTodayDateStr } from './utils/storage';
 import {
   getXpRequiredForLevel,
   getRankFromLevel,
   getMilestoneTitle,
+  getTestXpReward,
 } from './utils/progression';
 import { soundFx } from './utils/audio';
 
@@ -31,6 +34,7 @@ import { LevelUpModal } from './components/common/LevelUpModal';
 import { HunterDashboard } from './components/home/HunterDashboard';
 import { QuestsScreen } from './components/quests/QuestsScreen';
 import { PushUpsScreen } from './components/training/PushUpsScreen';
+import { TestTrainingScreen } from './components/tests/TestTrainingScreen';
 import { StudyScreen } from './components/study/StudyScreen';
 import { VaultScreen } from './components/vault/VaultScreen';
 import { TimetableEditorModal } from './components/timetable/TimetableEditorModal';
@@ -45,6 +49,8 @@ export default function App() {
   const [pushUpRecords, setPushUpRecords] = useState<PushUpRecord[]>(() => StorageService.getPushUpRecords());
   const [pushUpSessions, setPushUpSessions] = useState<PushUpWorkoutSession[]>(() => StorageService.getPushUpSessions());
   const [studySessions, setStudySessions] = useState<StudySession[]>(() => StorageService.getStudySessions());
+  const [testRecords, setTestRecords] = useState<TestRecord[]>(() => StorageService.getTestRecords());
+  const [dailySlot, setDailySlot] = useState<DailyTestSlot>(() => StorageService.getDailyTestSlot());
   const [timetable, setTimetable] = useState<TimetableActivity[]>(() => StorageService.getTimetable());
   const [achievements, setAchievements] = useState<Achievement[]>(() => StorageService.getAchievements());
   const [xpLedger, setXpLedger] = useState<XPTransaction[]>(() => StorageService.getXpLedger());
@@ -124,7 +130,8 @@ export default function App() {
       currentRecords: PushUpRecord[],
       currentStudy: StudySession[],
       currentStreak: number,
-      bossCompleted: boolean
+      bossCompleted: boolean,
+      currentTests?: TestRecord[]
     ) => {
       let updatedAch = [...achievements];
       let hasChanges = false;
@@ -160,12 +167,24 @@ export default function App() {
       const totalFocusMins = currentStudy.reduce((sum, s) => sum + s.durationMinutes, 0);
       if (totalFocusMins >= 120) unlock('ach-master-focus');
 
+      // Test achievements
+      const testsToInspect = currentTests || testRecords;
+      if (testsToInspect.length >= 5) unlock('ach-test-5');
+      if (testsToInspect.length >= 10) unlock('ach-test-10');
+      if (testsToInspect.length > 0) {
+        const avgPct =
+          testsToInspect.reduce((sum, t) => sum + t.percentage, 0) / testsToInspect.length;
+        if (avgPct >= 70) unlock('ach-test-70-pct');
+        if (avgPct >= 80) unlock('ach-test-80-pct');
+        if (avgPct >= 90) unlock('ach-test-90-pct');
+      }
+
       if (hasChanges) {
         setAchievements(updatedAch);
         StorageService.saveAchievements(updatedAch);
       }
     },
-    [achievements]
+    [achievements, testRecords]
   );
 
   // Core XP & Level-Up Progression Engine
@@ -444,6 +463,129 @@ export default function App() {
     StorageService.saveStudySessions(updated);
   };
 
+  // Test Training handlers
+  const handleSaveTest = (
+    testData: Omit<TestRecord, 'id' | 'timestamp' | 'percentage' | 'xpEarned'>,
+    isDailySlot: boolean
+  ) => {
+    const total = testData.totalMarks > 0 ? testData.totalMarks : 1;
+    const percentage = (testData.marksObtained / total) * 100;
+    const xpReward = getTestXpReward(percentage, isDailySlot);
+
+    const newRecord: TestRecord = {
+      ...testData,
+      id: `test-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      timestamp: new Date().toISOString(),
+      percentage,
+      xpEarned: xpReward,
+      isDailySlotTest: isDailySlot,
+    };
+
+    const updated = [newRecord, ...testRecords];
+    setTestRecords(updated);
+    StorageService.saveTestRecords(updated);
+
+    // If daily slot, mark today completed
+    const today = getTodayDateStr();
+    if (isDailySlot && !dailySlot.completedDates.includes(today)) {
+      const updatedSlot: DailyTestSlot = {
+        ...dailySlot,
+        completedDates: [...dailySlot.completedDates, today],
+      };
+      setDailySlot(updatedSlot);
+      StorageService.saveDailyTestSlot(updatedSlot);
+    }
+
+    // Award XP only after entering and saving actual test result
+    grantXP(
+      xpReward,
+      `Exam Test: ${testData.testName} (${percentage.toFixed(1)}%)`,
+      'test'
+    );
+    checkAchievements(
+      quests,
+      pushUpRecords,
+      studySessions,
+      user.currentStreak,
+      boss.completed,
+      updated
+    );
+  };
+
+  const handleEditTest = (id: string, updatedFields: Partial<TestRecord>) => {
+    const updated = testRecords.map((t) => {
+      if (t.id === id) {
+        const marksObtained = updatedFields.marksObtained ?? t.marksObtained;
+        const totalMarks = updatedFields.totalMarks ?? t.totalMarks;
+        const percentage = totalMarks > 0 ? (marksObtained / totalMarks) * 100 : t.percentage;
+        return {
+          ...t,
+          ...updatedFields,
+          percentage,
+        };
+      }
+      return t;
+    });
+    setTestRecords(updated);
+    StorageService.saveTestRecords(updated);
+    checkAchievements(
+      quests,
+      pushUpRecords,
+      studySessions,
+      user.currentStreak,
+      boss.completed,
+      updated
+    );
+  };
+
+  const handleDeleteTest = (id: string) => {
+    const target = testRecords.find((t) => t.id === id);
+    const updated = testRecords.filter((t) => t.id !== id);
+    setTestRecords(updated);
+    StorageService.saveTestRecords(updated);
+
+    // Reversing XP if test is deleted
+    if (target && target.xpEarned > 0) {
+      setUser((prevUser) => {
+        const newTotalXp = Math.max(0, prevUser.totalXpEarned - target.xpEarned);
+        let newCurrentXp = prevUser.currentXp - target.xpEarned;
+        let newLevel = prevUser.level;
+
+        while (newCurrentXp < 0 && newLevel > 1) {
+          newLevel -= 1;
+          newCurrentXp += getXpRequiredForLevel(newLevel);
+        }
+        if (newCurrentXp < 0) newCurrentXp = 0;
+
+        const newRank = getRankFromLevel(newLevel);
+        const updatedProfile: UserProfile = {
+          ...prevUser,
+          level: newLevel,
+          currentXp: newCurrentXp,
+          totalXpEarned: newTotalXp,
+          rank: newRank,
+        };
+        StorageService.saveUserProfile(updatedProfile);
+        return updatedProfile;
+      });
+    }
+
+    checkAchievements(
+      quests,
+      pushUpRecords,
+      studySessions,
+      user.currentStreak,
+      boss.completed,
+      updated
+    );
+  };
+
+  const handleUpdateDailySlot = (slot: DailyTestSlot) => {
+    setDailySlot(slot);
+    StorageService.saveDailyTestSlot(slot);
+    soundFx.playClick();
+  };
+
   // Timetable
   const handleSaveTimetable = (updated: TimetableActivity[]) => {
     setTimetable(updated);
@@ -475,6 +617,7 @@ export default function App() {
 
   // Pending quests count for badge
   const pendingQuestsCount = quests.filter((q) => q.date === getTodayDateStr() && !q.completed).length;
+  const isDailySlotPending = !dailySlot.completedDates.includes(getTodayDateStr());
 
   return (
     <div className="min-h-screen bg-[#07090e] text-slate-100 flex flex-col justify-between selection:bg-cyan-500/30 selection:text-cyan-200">
@@ -522,6 +665,8 @@ export default function App() {
               pushUpRecords={pushUpRecords}
               studySessions={studySessions}
               timetable={timetable}
+              testRecords={testRecords}
+              dailySlot={dailySlot}
               onNavigate={(tab) => {
                 setActiveTab(tab);
                 soundFx.playClick();
@@ -545,6 +690,19 @@ export default function App() {
               onDeleteQuest={handleDeleteQuest}
               onPostponeQuest={handlePostponeQuest}
               onToggleBossMilestone={handleToggleBossMilestone}
+            />
+          )}
+
+          {activeTab === 'tests' && (
+            <TestTrainingScreen
+              user={user}
+              testRecords={testRecords}
+              dailySlot={dailySlot}
+              settings={settings}
+              onSaveTest={handleSaveTest}
+              onEditTest={handleEditTest}
+              onDeleteTest={handleDeleteTest}
+              onUpdateDailySlot={handleUpdateDailySlot}
             />
           )}
 
@@ -600,6 +758,7 @@ export default function App() {
             soundFx.playClick();
           }}
           pendingQuestsCount={pendingQuestsCount}
+          dailyTestSlotPending={isDailySlotPending}
         />
 
         {/* Timetable Editor Modal */}

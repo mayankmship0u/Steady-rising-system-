@@ -149,3 +149,31 @@ export function getDailyQuote(): { text: string; author: string } {
   const index = Math.abs(dayOfYear) % HUNTER_QUOTES.length;
   return HUNTER_QUOTES[index];
 }
+
+/**
+ * Calculates test performance XP according to exact percentage brackets.
+ * 0-39%: 5 XP
+ * 40-49%: 10 XP
+ * 50-59%: 20 XP
+ * 60-69%: 30 XP
+ * 70-79%: 45 XP
+ * 80-89%: 60 XP
+ * 90-94%: 80 XP
+ * 95-100%: 100 XP
+ * +10 XP bonus for completing scheduled daily test slot.
+ */
+export function getTestXpReward(percentage: number, isDailySlot: boolean = false): number {
+  const rounded = Math.round(percentage);
+  let base = 5;
+  if (rounded >= 95) base = 100;
+  else if (rounded >= 90) base = 80;
+  else if (rounded >= 80) base = 60;
+  else if (rounded >= 70) base = 45;
+  else if (rounded >= 60) base = 30;
+  else if (rounded >= 50) base = 20;
+  else if (rounded >= 40) base = 10;
+  else base = 5;
+
+  return isDailySlot ? base + 10 : base;
+}
+

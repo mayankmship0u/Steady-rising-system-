@@ -113,6 +113,20 @@ export const VaultScreen: React.FC<VaultScreenProps> = ({
     setTimeout(() => setExportNotice(null), 3500);
   };
 
+  const handleDownloadTestsCSV = () => {
+    const csvStr = StorageService.exportTestsCSV();
+    const blob = new Blob([csvStr], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `steady_test_exams_${todayStr}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    soundFx.playClick();
+    setExportNotice('Exported Test & Exam history to CSV.');
+    setTimeout(() => setExportNotice(null), 3500);
+  };
+
   const unlockedCount = achievements.filter((a) => a.unlocked).length;
 
   return (
@@ -717,13 +731,20 @@ export const VaultScreen: React.FC<VaultScreenProps> = ({
               All progress is saved persistently in your local device storage. No remote accounts required.
             </p>
 
-            <div className="grid grid-cols-3 gap-2 pt-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
               <button
                 onClick={handleDownloadJSON}
                 className="flex flex-col items-center justify-center p-2.5 rounded-lg border border-slate-800 bg-slate-900 hover:border-cyan-500/40 text-slate-300 transition"
               >
                 <FileText className="w-4 h-4 text-cyan-400 mb-1" />
                 <span className="text-[10px] font-orbitron font-bold">ALL (JSON)</span>
+              </button>
+              <button
+                onClick={handleDownloadTestsCSV}
+                className="flex flex-col items-center justify-center p-2.5 rounded-lg border border-slate-800 bg-slate-900 hover:border-sky-500/40 text-slate-300 transition"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-sky-400 mb-1" />
+                <span className="text-[10px] font-orbitron font-bold">TESTS</span>
               </button>
               <button
                 onClick={handleDownloadPushUpsCSV}

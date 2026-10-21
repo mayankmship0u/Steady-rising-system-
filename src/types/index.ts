@@ -97,7 +97,7 @@ export interface Achievement {
   codeName: string;
   description: string;
   icon: string;
-  category: 'quest' | 'fitness' | 'study' | 'streak' | 'mastery';
+  category: 'quest' | 'fitness' | 'study' | 'streak' | 'mastery' | 'test';
   unlocked: boolean;
   unlockedAt?: string;
   progress: number;
@@ -105,11 +105,52 @@ export interface Achievement {
   xpBonus: number;
 }
 
+export type TestCategory =
+  | 'Banking'
+  | 'IBPS PO'
+  | 'SSC CGL'
+  | 'Reasoning'
+  | 'Quantitative Aptitude'
+  | 'English'
+  | 'General Awareness'
+  | 'Custom';
+
+export interface TestRecord {
+  id: string;
+  testName: string;
+  subject: string;
+  category: TestCategory | string;
+  date: string; // YYYY-MM-DD
+  timestamp: string; // ISO string
+  marksObtained: number;
+  totalMarks: number;
+  percentage: number;
+  questionsAttempted?: number;
+  correctAnswers?: number;
+  wrongAnswers?: number;
+  timeTakenMinutes?: number;
+  notes?: string;
+  topicsToRevise?: string;
+  xpEarned: number;
+  isDailySlotTest?: boolean;
+}
+
+export interface DailyTestSlot {
+  time: string; // e.g. "20:00" (8:00 PM)
+  timeFormatted: string; // e.g. "8:00 PM"
+  subject: string;
+  category: string;
+  durationMinutes: number;
+  reminderEnabled: boolean;
+  activeDays: number[]; // 0 = Sun, 1 = Mon ... 6 = Sat
+  completedDates: string[]; // ['2026-10-20']
+}
+
 export interface XPTransaction {
   id: string;
   amount: number;
   source: string;
-  category: 'quest' | 'pushups' | 'training' | 'study' | 'boss' | 'achievement' | 'streak';
+  category: 'quest' | 'pushups' | 'training' | 'study' | 'boss' | 'achievement' | 'streak' | 'test';
   timestamp: string;
 }
 
@@ -144,4 +185,5 @@ export interface AppSettings {
   pushUpDailyXpLimit: number; // default 75 XP
 }
 
-export type ActiveTab = 'home' | 'quests' | 'training' | 'study' | 'vault';
+export type ActiveTab = 'home' | 'quests' | 'training' | 'tests' | 'study' | 'vault';
+

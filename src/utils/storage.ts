@@ -10,6 +10,8 @@ import {
   Achievement,
   XPTransaction,
   AppSettings,
+  TestRecord,
+  DailyTestSlot,
 } from '../types';
 
 const STORAGE_KEYS = {
@@ -24,6 +26,8 @@ const STORAGE_KEYS = {
   ACHIEVEMENTS: 'steady_achievements',
   XP_LEDGER: 'steady_xp_ledger',
   SETTINGS: 'steady_settings',
+  TEST_RECORDS: 'steady_test_records',
+  DAILY_TEST_SLOT: 'steady_daily_test_slot',
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -358,7 +362,78 @@ export const INITIAL_ACHIEVEMENTS: Achievement[] = [
     maxProgress: 120,
     xpBonus: 150,
   },
+  {
+    id: 'ach-test-5',
+    title: 'Exam Initiate',
+    codeName: 'TESTS_5',
+    description: 'Complete and record 5 mock exams or subject practice tests.',
+    icon: 'GraduationCap',
+    category: 'test',
+    unlocked: false,
+    progress: 0,
+    maxProgress: 5,
+    xpBonus: 75,
+  },
+  {
+    id: 'ach-test-10',
+    title: 'Test Conqueror',
+    codeName: 'TESTS_10',
+    description: 'Conquer 10 full test sessions in your exam prep regimen.',
+    icon: 'Target',
+    category: 'test',
+    unlocked: false,
+    progress: 0,
+    maxProgress: 10,
+    xpBonus: 150,
+  },
+  {
+    id: 'ach-test-70-pct',
+    title: 'Precision Hunter',
+    codeName: 'TEST_AVG_70',
+    description: 'Attain an overall test average of 70% or higher.',
+    icon: 'Award',
+    category: 'test',
+    unlocked: false,
+    progress: 0,
+    maxProgress: 70,
+    xpBonus: 100,
+  },
+  {
+    id: 'ach-test-80-pct',
+    title: 'Master Strategist',
+    codeName: 'TEST_AVG_80',
+    description: 'Attain an overall test average of 80% or higher.',
+    icon: 'Brain',
+    category: 'test',
+    unlocked: false,
+    progress: 0,
+    maxProgress: 80,
+    xpBonus: 180,
+  },
+  {
+    id: 'ach-test-90-pct',
+    title: 'Sovereign Intellect',
+    codeName: 'TEST_AVG_90',
+    description: 'Attain an elite overall test average of 90% or higher.',
+    icon: 'Crown',
+    category: 'test',
+    unlocked: false,
+    progress: 0,
+    maxProgress: 90,
+    xpBonus: 250,
+  },
 ];
+
+export const DEFAULT_DAILY_TEST_SLOT: DailyTestSlot = {
+  time: '20:00',
+  timeFormatted: '8:00 PM',
+  subject: 'Reasoning & Quantitative Aptitude',
+  category: 'Banking / IBPS PO',
+  durationMinutes: 30,
+  reminderEnabled: true,
+  activeDays: [1, 2, 3, 4, 5, 6, 0],
+  completedDates: [],
+};
 
 // Helper to safe load JSON with fallback
 function safeGet<T>(key: string, fallback: T): T {
@@ -496,6 +571,53 @@ export const StorageService = {
     safeSet(STORAGE_KEYS.SETTINGS, settings);
   },
 
+  getTestRecords(): TestRecord[] {
+    return safeGet<TestRecord[]>(STORAGE_KEYS.TEST_RECORDS, []);
+  },
+
+  saveTestRecords(records: TestRecord[]): void {
+    safeSet(STORAGE_KEYS.TEST_RECORDS, records);
+  },
+
+  getDailyTestSlot(): DailyTestSlot {
+    const slot = safeGet<DailyTestSlot>(STORAGE_KEYS.DAILY_TEST_SLOT, DEFAULT_DAILY_TEST_SLOT);
+    return { ...DEFAULT_DAILY_TEST_SLOT, ...slot };
+  },
+
+  saveDailyTestSlot(slot: DailyTestSlot): void {
+    safeSet(STORAGE_KEYS.DAILY_TEST_SLOT, slot);
+  },
+
+  getTestStreak(): number {
+    const slot = this.getDailyTestSlot();
+    const sorted = [...slot.completedDates].sort().reverse();
+    if (sorted.length === 0) return 0;
+    const checkDate = new Date();
+    const today = checkDate.toISOString().split('T')[0];
+    checkDate.setDate(checkDate.getDate() - 1);
+    const yesterday = checkDate.toISOString().split('T')[0];
+    if (!sorted.includes(today) && !sorted.includes(yesterday)) return 0;
+    let streak = 0;
+    const iter = new Date(sorted.includes(today) ? today : yesterday);
+    while (sorted.includes(iter.toISOString().split('T')[0])) {
+      streak += 1;
+      iter.setDate(iter.getDate() - 1);
+    }
+    return streak;
+  },
+
+  getSubjectNotes(): Record<string, { topicsToRevise: string[]; notes: string[] }> {
+    const records = this.getTestRecords();
+    const map: Record<string, { topicsToRevise: string[]; notes: string[] }> = {};
+    records.forEach((r) => {
+      const subj = r.subject || 'General';
+      if (!map[subj]) map[subj] = { topicsToRevise: [], notes: [] };
+      if (r.topicsToRevise?.trim()) map[subj].topicsToRevise.push(r.topicsToRevise.trim());
+      if (r.notes?.trim()) map[subj].notes.push(r.notes.trim());
+    });
+    return map;
+  },
+
   exportAllDataJSON(): string {
     const payload = {
       exportedAt: new Date().toISOString(),
@@ -510,6 +632,8 @@ export const StorageService = {
       achievements: this.getAchievements(),
       xpLedger: this.getXpLedger(),
       settings: this.getSettings(),
+      testRecords: this.getTestRecords(),
+      dailyTestSlot: this.getDailyTestSlot(),
     };
     return JSON.stringify(payload, null, 2);
   },
@@ -541,6 +665,31 @@ export const StorageService = {
         q.completed ? 'Completed' : 'Pending',
         q.date,
         `"${(q.notes || '').replace(/"/g, '""')}"`,
+      ]),
+    ];
+    return rows.map(r => r.join(',')).join('\n');
+  },
+
+  exportTestsCSV(): string {
+    const tests = this.getTestRecords();
+    const rows = [
+      ['Date', 'Test Name', 'Subject', 'Category', 'Marks Obtained', 'Total Marks', 'Percentage', 'Questions Attempted', 'Correct', 'Wrong', 'Time (min)', 'XP Earned', 'Daily Slot Bonus', 'Topics To Revise', 'Notes'],
+      ...tests.map(t => [
+        t.date,
+        `"${t.testName.replace(/"/g, '""')}"`,
+        `"${t.subject.replace(/"/g, '""')}"`,
+        `"${t.category.replace(/"/g, '""')}"`,
+        t.marksObtained.toString(),
+        t.totalMarks.toString(),
+        `${t.percentage.toFixed(1)}%`,
+        (t.questionsAttempted ?? '').toString(),
+        (t.correctAnswers ?? '').toString(),
+        (t.wrongAnswers ?? '').toString(),
+        (t.timeTakenMinutes ?? '').toString(),
+        t.xpEarned.toString(),
+        t.isDailySlotTest ? 'YES (+10 XP)' : 'NO',
+        `"${(t.topicsToRevise || '').replace(/"/g, '""')}"`,
+        `"${(t.notes || '').replace(/"/g, '""')}"`,
       ]),
     ];
     return rows.map(r => r.join(',')).join('\n');
